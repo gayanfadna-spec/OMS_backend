@@ -2,7 +2,7 @@ const jwt = require('jsonwebtoken');
 const bcrypt = require('bcryptjs');
 const asyncHandler = require('express-async-handler');
 const User = require('../models/User');
-
+//rgrgrtgrgffgf
 // @desc    Authenticate a user
 // @route   POST /api/auth/login
 // @access  Public
@@ -188,3 +188,4 @@ module.exports = {
     updateUser,
     deleteUser
 };
+//fdrrr

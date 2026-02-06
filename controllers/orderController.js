@@ -246,7 +246,7 @@ const createOrder = asyncHandler(async (req, res) => {
         deliveryCharge = Number(manualDeliveryCharge);
     } else {
         // Check for special condition: "Moist Curl Leave On Conditioner" is FREE delivery
-        const hasFreeDeliveryItem = items.some(item => item.productName === "Moist Curl Leave On Conditioner");
+        const hasFreeDeliveryItem = items.some(item => item.productName === "moist curl");
 
         if (!hasFreeDeliveryItem && calculatedTotal < 2500) {
             deliveryCharge = 350;

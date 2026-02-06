@@ -5,7 +5,8 @@ const Product = require('../models/Product');
 // @route   GET /api/products
 // @access  Private
 const getProducts = asyncHandler(async (req, res) => {
-    const products = await Product.find({ active: true });
+    const filter = req.query.all === 'true' ? {} : { active: true };
+    const products = await Product.find(filter);
     res.json(products);
 });
 
@@ -71,10 +72,9 @@ const deleteProduct = asyncHandler(async (req, res) => {
         throw new Error('Product not found');
     }
 
-    product.active = false;
-    await product.save();
+    await Product.findByIdAndDelete(req.params.id);
 
-    res.json({ id: req.params.id });
+    res.json({ id: req.params.id, message: 'Product permanently deleted' });
 });
 
 module.exports = {

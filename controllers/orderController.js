@@ -155,8 +155,8 @@ const bulkImportOrders = asyncHandler(async (req, res) => {
 
                     let deliveryCharge = 0;
                     // Standard logic: if total < 2500, charge 350
-                    // EXCEPTION: if order contains "Moist Curl Leave On Conditioner", delivery is free
-                    const hasFreeDeliveryItem = items.some(item => item.productName === "Moist Curl Leave On Conditioner");
+                    // EXCEPTION: if order contains "moist curl", delivery is free
+                    const hasFreeDeliveryItem = items.some(item => item.productName === "moist curl");
 
                     if (!hasFreeDeliveryItem && totalAmount < 2500) {
                         deliveryCharge = 350;
@@ -238,14 +238,14 @@ const createOrder = asyncHandler(async (req, res) => {
     }
 
     // Delivery Charge Logic: >= 2500 is FREE, otherwise 350
-    // EXCEPTION: Single item "Moist Curl Leave On Conditioner" is FREE delivery
+    // EXCEPTION: Single item "moist curl" is FREE delivery
     // ALLOW OVERRIDE: If manualDeliveryCharge is provided, use it.
     let deliveryCharge = 0;
 
     if (manualDeliveryCharge !== undefined && manualDeliveryCharge !== null) {
         deliveryCharge = Number(manualDeliveryCharge);
     } else {
-        // Check for special condition: "Moist Curl Leave On Conditioner" is FREE delivery
+        // Check for special condition: "moist curl" is FREE delivery
         const hasFreeDeliveryItem = items.some(item => item.productName === "moist curl");
 
         if (!hasFreeDeliveryItem && calculatedTotal < 2500) {
@@ -413,9 +413,9 @@ const deleteOrder = asyncHandler(async (req, res) => {
         throw new Error('Order not found');
     }
 
-    if (req.user.role !== 'Super Admin') {
+    if (req.user.role !== 'Super Admin' && req.user.role !== 'Admin') {
         res.status(403);
-        throw new Error('Not authorized. Only Super Admin can delete orders.');
+        throw new Error('Not authorized. Only Admin or Super Admin can delete orders.');
     }
 
     if (!password) {

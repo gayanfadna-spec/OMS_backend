@@ -60,11 +60,21 @@ const getCustomerByPhone = asyncHandler(async (req, res) => {
 // @route   PUT /api/customers/:id
 // @access  Private
 const updateCustomer = asyncHandler(async (req, res) => {
+    const { name, phone, phone2, address, city, email } = req.body;
     const customer = await Customer.findById(req.params.id);
 
     if (!customer) {
         res.status(404);
         throw new Error('Customer not found');
+    }
+
+    // Check if phone is being updated and if it's already taken
+    if (phone && phone !== customer.phone) {
+        const phoneExists = await Customer.findOne({ phone });
+        if (phoneExists) {
+            res.status(400);
+            throw new Error('Another customer already has this phone number');
+        }
     }
 
     const updatedCustomer = await Customer.findByIdAndUpdate(req.params.id, req.body, {

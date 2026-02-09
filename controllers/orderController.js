@@ -342,34 +342,88 @@ const updateOrder = asyncHandler(async (req, res) => {
     }
 
     // Check permissions
-    // Admin/Super Admin can do anything.
-    // Agent can only edit if they are the owner.
     const isAdmin = req.user.role === 'Admin' || req.user.role === 'Super Admin';
     const isOwner = order.agent.toString() === req.user._id.toString();
 
     if (!isAdmin && !isOwner) {
-        // Only allow submitting an edit request (not implemented in this step, returning 403 for now)
         res.status(403);
-        throw new Error('Not authorized to edit this order. Please submit an edit request.');
+        throw new Error('Not authorized to edit this order.');
     }
 
-    // Determine what can be updated
-    if (!isAdmin && req.body.status && req.body.status !== order.status) {
-        res.status(403);
-        throw new Error('Not authorized to change order status.');
+    const {
+        customerId,
+        items,
+        discountAmount,
+        paymentStatus,
+        remark,
+        additionalRemark,
+        deliveryCharge: manualDeliveryCharge,
+        status
+    } = req.body;
+
+    // Recalculate if items or discount or delivery charge is provided
+    if (items || discountAmount !== undefined || manualDeliveryCharge !== undefined || remark !== undefined) {
+        let calculatedTotal = order.totalAmount;
+        let finalItems = order.items;
+
+        if (items) {
+            calculatedTotal = 0;
+            for (const item of items) {
+                calculatedTotal += Number(item.price) * Number(item.quantity);
+            }
+            finalItems = items;
+        }
+
+        const finalDiscount = discountAmount !== undefined ? Number(discountAmount) : order.discountAmount;
+
+        let deliveryCharge = order.deliveryCharge;
+        if (manualDeliveryCharge !== undefined && manualDeliveryCharge !== null) {
+            deliveryCharge = Number(manualDeliveryCharge);
+        } else if (items) {
+            // Recalculate delivery if items changed and no manual override in this request
+            const hasFreeDeliveryItem = items.some(item => item.productName === "moist curl");
+            if (hasFreeDeliveryItem) {
+                deliveryCharge = 0;
+            } else {
+                deliveryCharge = (calculatedTotal < 2500 && calculatedTotal > 0) ? 350 : 0;
+            }
+        }
+
+        const calculatedFinal = calculatedTotal - finalDiscount + deliveryCharge;
+
+        // Clean existing "Discount Applied" from remark to avoid duplication
+        let finalRemark = (remark !== undefined ? remark : order.remark) || '';
+        finalRemark = finalRemark.split(' | Discount Applied:')[0].replace(/Discount Applied: Rs\. \d+(\.\d+)?/g, '').trim();
+
+        if (finalDiscount > 0) {
+            const discountInfo = `Discount Applied: Rs. ${finalDiscount}`;
+            if (finalRemark) {
+                finalRemark = `${finalRemark} | ${discountInfo}`;
+            } else {
+                finalRemark = discountInfo;
+            }
+        }
+
+        order.totalAmount = calculatedTotal;
+        order.items = finalItems;
+        order.discountAmount = finalDiscount;
+        order.deliveryCharge = deliveryCharge;
+        order.finalAmount = calculatedFinal;
+        order.remark = finalRemark;
     }
 
-    const updatedOrder = await Order.findByIdAndUpdate(req.params.id, {
-        ...req.body,
-        'editRequest.pending': false // Resolve any pending request
-    }, {
-        new: true,
-    });
+    if (customerId) order.customer = customerId;
+    if (paymentStatus) order.paymentStatus = paymentStatus;
+    if (additionalRemark !== undefined) order.additionalRemark = additionalRemark;
+    if (isAdmin && status) order.status = status;
 
-    // Log the edit (rudimentary)
-    updatedOrder.editedBy.push({ agent: req.user._id });
-    await updatedOrder.save();
+    // Resolve any pending request
+    order.editRequest.pending = false;
 
+    // Log the edit
+    order.editedBy.push({ agent: req.user._id, at: new Date() });
+
+    const updatedOrder = await order.save();
     res.json(updatedOrder);
 });
 

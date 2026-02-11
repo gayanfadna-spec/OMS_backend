@@ -7,7 +7,7 @@ const Customer = require('../models/Customer');
 const createCustomer = asyncHandler(async (req, res) => {
     const { name, phone, phone2, address, city, email } = req.body;
 
-    if (!name || !phone || !address) {
+    if (!name || !phone || !address || !city) {
         res.status(400);
         throw new Error('Please add all required fields');
     }

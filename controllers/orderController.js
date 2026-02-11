@@ -304,7 +304,7 @@ const getOrders = asyncHandler(async (req, res) => {
     }
 
     const orders = await Order.find(query)
-        .populate('customer', 'name phone phone2 address city')
+        .populate('customer', 'name phone phone2 address city country email')
         .populate('agent', 'name')
         .populate('editRequest.from', 'name')
         .populate('editedBy.agent', 'name')
@@ -318,7 +318,7 @@ const getOrders = asyncHandler(async (req, res) => {
 // @access  Private
 const getOrderById = asyncHandler(async (req, res) => {
     const order = await Order.findById(req.params.id)
-        .populate('customer', 'name phone email address city')
+        .populate('customer', 'name phone phone2 email address city country')
         .populate('agent', 'name email')
         .populate('editedBy.agent', 'name');
 
@@ -623,7 +623,7 @@ const exportOrders = asyncHandler(async (req, res) => {
 
     // First fetch the orders to return them
     const orders = await Order.find(filter)
-        .populate('customer', 'name phone phone2 address city')
+        .populate('customer', 'name phone phone2 address city country email')
         .populate('agent', 'name')
         .sort({ createdAt: -1 });
 
@@ -695,7 +695,7 @@ const getMyReport = asyncHandler(async (req, res) => {
     }
 
     const orders = await Order.find(filter)
-        .populate('customer', 'name phone phone2 address city')
+        .populate('customer', 'name phone phone2 address city country email')
         .populate('agent', 'name')
         .sort({ createdAt: -1 });
 

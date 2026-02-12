@@ -156,7 +156,9 @@ const bulkImportOrders = asyncHandler(async (req, res) => {
                     let deliveryCharge = 0;
                     // Standard logic: if total < 2500, charge 350
                     // EXCEPTION: if order contains "moist curl", delivery is free
-                    const hasFreeDeliveryItem = items.some(item => item.productName === "moist curl");
+                    const hasFreeDeliveryItem = items.some(item =>
+                        item.productName && item.productName.toLowerCase().includes("moist curl")
+                    );
 
                     if (!hasFreeDeliveryItem && totalAmount < 2500) {
                         deliveryCharge = 350;
@@ -246,7 +248,9 @@ const createOrder = asyncHandler(async (req, res) => {
         deliveryCharge = Number(manualDeliveryCharge);
     } else {
         // Check for special condition: "moist curl" is FREE delivery
-        const hasFreeDeliveryItem = items.some(item => item.productName === "moist curl");
+        const hasFreeDeliveryItem = items.some(item =>
+            item.productName && item.productName.toLowerCase().includes("moist curl")
+        );
 
         if (!hasFreeDeliveryItem && calculatedTotal < 2500) {
             deliveryCharge = 350;
@@ -381,7 +385,9 @@ const updateOrder = asyncHandler(async (req, res) => {
             deliveryCharge = Number(manualDeliveryCharge);
         } else if (items) {
             // Recalculate delivery if items changed and no manual override in this request
-            const hasFreeDeliveryItem = items.some(item => item.productName === "moist curl");
+            const hasFreeDeliveryItem = items.some(item =>
+                item.productName && item.productName.toLowerCase().includes("moist curl")
+            );
             if (hasFreeDeliveryItem) {
                 deliveryCharge = 0;
             } else {

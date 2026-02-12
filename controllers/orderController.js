@@ -8,7 +8,7 @@ const User = require('../models/User');
 const Product = require('../models/Product');
 
 // @desc    Bulk import orders from CSVfdfdddf
-// @route   POST /api/orders/bulk-import
+// @route   POST /api/orders/bulk-importt
 // @access  Private (Admin/Super Admin)
 const bulkImportOrders = asyncHandler(async (req, res) => {
     if (!req.file) {

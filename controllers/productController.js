@@ -83,3 +83,5 @@ module.exports = {
     updateProduct,
     deleteProduct,
 };
+
+//add product

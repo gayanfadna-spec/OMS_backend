@@ -153,16 +153,8 @@ const bulkImportOrders = asyncHandler(async (req, res) => {
                         totalAmount = subtotalCsv;
                     }
 
+                    // Web orders (bulk imported) have NO delivery charge
                     let deliveryCharge = 0;
-                    // Standard logic: if total < 2500, charge 350
-                    // EXCEPTION: if order contains "moist curl", delivery is free
-                    const hasFreeDeliveryItem = items.some(item =>
-                        item.productName && item.productName.toLowerCase().includes("moist curl")
-                    );
-
-                    if (!hasFreeDeliveryItem && totalAmount < 2500) {
-                        deliveryCharge = 350;
-                    }
 
                     const finalAmount = totalAmount + deliveryCharge;
 

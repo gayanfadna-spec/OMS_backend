@@ -521,7 +521,15 @@ const bulkDeleteOrders = asyncHandler(async (req, res) => {
 // @route   GET /api/orders/stats
 // @access  Private
 const getDashboardStats = asyncHandler(async (req, res) => {
+    const startOfDay = new Date();
+    startOfDay.setHours(0, 1, 0, 0); // 12:01 AM
+    const endOfDay = new Date();
+    endOfDay.setHours(23, 59, 59, 999); // 11:59 PM
+
     const totalOrders = await Order.countDocuments();
+    const todaysOrders = await Order.countDocuments({
+        createdAt: { $gte: startOfDay, $lte: endOfDay }
+    });
 
     // Aggregation for Total Revenue (All Time)
     const revenueAgg = await Order.aggregate([
@@ -529,23 +537,25 @@ const getDashboardStats = asyncHandler(async (req, res) => {
     ]);
     const totalRevenue = revenueAgg.length > 0 ? revenueAgg[0].total : 0;
 
-    // Aggregation for Today's Revenue
-    const startOfDay = new Date();
-    startOfDay.setHours(0, 0, 0, 0);
-
+    // Aggregation for Today's Revenue (12.01 AM to 11.59 PM)
     const todaysRevenueAgg = await Order.aggregate([
-        { $match: { createdAt: { $gte: startOfDay } } },
+        { $match: { createdAt: { $gte: startOfDay, $lte: endOfDay } } },
         { $group: { _id: null, total: { $sum: "$finalAmount" } } }
     ]);
     const todaysRevenue = todaysRevenueAgg.length > 0 ? todaysRevenueAgg[0].total : 0;
 
     const totalCustomers = await Customer.countDocuments();
+    const todaysCustomers = await Customer.countDocuments({
+        createdAt: { $gte: startOfDay, $lte: endOfDay }
+    });
 
     res.json({
         totalOrders,
+        todaysOrders,
         totalRevenue,
         todaysRevenue,
-        totalCustomers
+        totalCustomers,
+        todaysCustomers
     });
 });
 
@@ -728,29 +738,53 @@ const getPendingEditRequestsCount = asyncHandler(async (req, res) => {
     }
 });
 
-// @desc    Get agent-wise and product-wise order counts for today
+// @desc    Get agent-wise and product-wise order counts with date range
 // @route   GET /api/orders/matrix
 // @access  Private
 const getOrderMatrix = asyncHandler(async (req, res) => {
-    const startOfDay = new Date();
-    startOfDay.setHours(0, 0, 0, 0);
-    const endOfDay = new Date();
-    endOfDay.setHours(23, 59, 59, 999);
+    const { startDate, endDate } = req.query;
+
+    let filter = {};
+    if (startDate && endDate) {
+        filter.createdAt = {
+            $gte: new Date(startDate),
+            $lte: new Date(endDate)
+        };
+    } else {
+        // Default to today if no dates provided (12:01 AM to 11:59 PM)
+        const startOfDay = new Date();
+        startOfDay.setHours(0, 1, 0, 0);
+        const endOfDay = new Date();
+        endOfDay.setHours(23, 59, 59, 999);
+        filter.createdAt = { $gte: startOfDay, $lte: endOfDay };
+    }
 
     const matrixData = await Order.aggregate([
+        { $match: filter },
+        { $unwind: "$items" },
         {
-            $match: {
-                createdAt: { $gte: startOfDay, $lte: endOfDay }
+            $addFields: {
+                normalizedProductName: {
+                    $cond: {
+                        if: {
+                            $regexMatch: {
+                                input: "$items.productName",
+                                regex: /tea/i
+                            }
+                        },
+                        then: "Tea",
+                        else: "$items.productName"
+                    }
+                }
             }
         },
-        { $unwind: "$items" },
         {
             $group: {
                 _id: {
                     agent: "$agent",
-                    product: "$items.productName"
+                    product: "$normalizedProductName"
                 },
-                count: { $sum: 1 } // Number of orders containing this product
+                count: { $sum: 1 }
             }
         },
         {
@@ -786,7 +820,8 @@ const getOrderMatrix = asyncHandler(async (req, res) => {
     res.json({
         agents: Array.from(agentSet).sort(),
         products: Array.from(productSet).sort(),
-        data: dataMap
+        data: dataMap,
+        range: { startDate, endDate }
     });
 });
 

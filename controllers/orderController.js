@@ -521,32 +521,44 @@ const bulkDeleteOrders = asyncHandler(async (req, res) => {
 // @route   GET /api/orders/stats
 // @access  Private
 const getDashboardStats = asyncHandler(async (req, res) => {
-    const startOfDay = new Date();
-    startOfDay.setHours(0, 1, 0, 0); // 12:01 AM
-    const endOfDay = new Date();
-    endOfDay.setHours(23, 59, 59, 999); // 11:59 PM
+    let { startDate, endDate } = req.query;
+    let start, end;
+
+    if (startDate && endDate) {
+        start = new Date(startDate);
+        end = new Date(endDate);
+    } else {
+        start = new Date();
+        start.setHours(0, 0, 0, 0);
+        end = new Date();
+        end.setHours(23, 59, 59, 999);
+    }
 
     const totalOrders = await Order.countDocuments();
     const todaysOrders = await Order.countDocuments({
-        createdAt: { $gte: startOfDay, $lte: endOfDay }
+        createdAt: { $gte: start, $lte: end },
+        status: { $ne: 'Returned' }
     });
 
     // Aggregation for Total Revenue (All Time)
     const revenueAgg = await Order.aggregate([
-        { $group: { _id: null, total: { $sum: "$finalAmount" } } }
+        { $group: { _id: null, total: { $sum: { $toDouble: "$finalAmount" } } } }
     ]);
     const totalRevenue = revenueAgg.length > 0 ? revenueAgg[0].total : 0;
 
-    // Aggregation for Today's Revenue (12.01 AM to 11.59 PM)
+    // Aggregation for Period Revenue (Match range and status)
     const todaysRevenueAgg = await Order.aggregate([
-        { $match: { createdAt: { $gte: startOfDay, $lte: endOfDay } } },
-        { $group: { _id: null, total: { $sum: "$finalAmount" } } }
+        { $match: { 
+            createdAt: { $gte: start, $lte: end },
+            status: { $ne: 'Returned' }
+        } },
+        { $group: { _id: null, total: { $sum: { $toDouble: "$finalAmount" } } } }
     ]);
     const todaysRevenue = todaysRevenueAgg.length > 0 ? todaysRevenueAgg[0].total : 0;
 
     const totalCustomers = await Customer.countDocuments();
     const todaysCustomers = await Customer.countDocuments({
-        createdAt: { $gte: startOfDay, $lte: endOfDay }
+        createdAt: { $gte: start, $lte: end }
     });
 
     res.json({
@@ -751,9 +763,9 @@ const getOrderMatrix = asyncHandler(async (req, res) => {
             $lte: new Date(endDate)
         };
     } else {
-        // Default to today if no dates provided (12:01 AM to 11:59 PM)
+        // Default to today if no dates provided (Midnight to 11:59 PM)
         const startOfDay = new Date();
-        startOfDay.setHours(0, 1, 0, 0);
+        startOfDay.setHours(0, 0, 0, 0);
         const endOfDay = new Date();
         endOfDay.setHours(23, 59, 59, 999);
         filter.createdAt = { $gte: startOfDay, $lte: endOfDay };
@@ -784,7 +796,7 @@ const getOrderMatrix = asyncHandler(async (req, res) => {
                     agent: "$agent",
                     product: "$normalizedProductName"
                 },
-                count: { $sum: 1 }
+                count: { $sum: "$items.quantity" }
             }
         },
         {

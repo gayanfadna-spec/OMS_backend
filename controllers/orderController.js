@@ -15,7 +15,7 @@ const bulkImportOrders = asyncHandler(async (req, res) => {
         res.status(400);
         throw new Error('Please upload a CSV file');
     }
-
+    ///////////////////////////////
     const results = [];
     const errors = [];
 
@@ -548,10 +548,12 @@ const getDashboardStats = asyncHandler(async (req, res) => {
 
     // Aggregation for Period Revenue (Match range and status)
     const todaysRevenueAgg = await Order.aggregate([
-        { $match: { 
-            createdAt: { $gte: start, $lte: end },
-            status: { $ne: 'Returned' }
-        } },
+        {
+            $match: {
+                createdAt: { $gte: start, $lte: end },
+                status: { $ne: 'Returned' }
+            }
+        },
         { $group: { _id: null, total: { $sum: { $toDouble: "$finalAmount" } } } }
     ]);
     const todaysRevenue = todaysRevenueAgg.length > 0 ? todaysRevenueAgg[0].total : 0;

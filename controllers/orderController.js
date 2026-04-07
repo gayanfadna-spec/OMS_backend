@@ -647,7 +647,7 @@ const exportOrders = asyncHandler(async (req, res) => {
         .populate('agent', 'name')
         .sort({ createdAt: -1 });
 
-    const isDispatch = !agentId || agentId === 'All';
+    const isDispatch = (!agentId || agentId === 'All') && req.user.email !== 'harshifadna@gmail.com';
 
     // Then update them ONLY IF it's a dispatch (All Agents)
     if (isDispatch && orders.length > 0) {

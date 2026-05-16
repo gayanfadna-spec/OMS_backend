@@ -497,16 +497,17 @@ const deleteOrder = asyncHandler(async (req, res) => {
 // @route   DELETE /api/orders/bulk-delete
 // @access  Private (Super Admin Only + Password)
 const bulkDeleteOrders = asyncHandler(async (req, res) => {
-    const { password } = req.body;
+    const { password, orderIds } = req.body;
+    const isAdmin = req.user.role === 'Admin' || req.user.role === 'Super Admin';
 
-    if (req.user.role !== 'Super Admin') {
+    if (!isAdmin) {
         res.status(403);
-        throw new Error('Not authorized. Only Super Admin can perform bulk deletion.');
+        throw new Error('Not authorized. Only Admin or Super Admin can perform deletion.');
     }
 
     if (!password) {
         res.status(400);
-        throw new Error('Password is required for bulk deletion');
+        throw new Error('Password is required for deletion');
     }
 
     const bcrypt = require('bcryptjs');
@@ -515,10 +516,22 @@ const bulkDeleteOrders = asyncHandler(async (req, res) => {
 
     if (!isMatch) {
         res.status(401);
-        throw new Error('Invalid password. Bulk deletion denied.');
+        throw new Error('Invalid password. Deletion denied.');
     }
 
-    const result = await Order.deleteMany({});
+    let result;
+    if (orderIds && Array.isArray(orderIds) && orderIds.length > 0) {
+        // Bulk delete specific orders - allowed for Admin and Super Admin
+        result = await Order.deleteMany({ _id: { $in: orderIds } });
+    } else {
+        // Bulk delete ALL orders - ONLY allowed for Super Admin
+        if (req.user.role !== 'Super Admin') {
+            res.status(403);
+            throw new Error('Only Super Admin can delete ALL orders.');
+        }
+        result = await Order.deleteMany({});
+    }
+
     res.json({ message: `Successfully deleted ${result.deletedCount} orders` });
 });
 

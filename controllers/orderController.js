@@ -290,7 +290,7 @@ const createOrder = asyncHandler(async (req, res) => {
 // @access  Private
 const getOrders = asyncHandler(async (req, res) => {
     let query = {};
-    const { startDate, endDate } = req.query;
+    const { startDate, endDate, page = 1, limit = 200 } = req.query;
 
     if (startDate && endDate) {
         query.createdAt = {
@@ -299,13 +299,18 @@ const getOrders = asyncHandler(async (req, res) => {
         };
     }
 
+    const skip = (Number(page) - 1) * Number(limit);
+
     const orders = await Order.find(query)
         .populate('customer', 'name phone phone2 address city country email')
         .populate('agent', 'name')
         .populate('editRequest.from', 'name')
         .populate('editedBy.agent', 'name')
-        .sort({ createdAt: -1 });
+        .sort({ createdAt: -1 })
+        .skip(skip)
+        .limit(Number(limit));
 
+    console.log(`Fetched ${orders.length} orders for query:`, query, `Page: ${page}`);
     res.json(orders);
 });
 
@@ -561,6 +566,15 @@ const getDashboardStats = asyncHandler(async (req, res) => {
     const totalCustomers = await Customer.countDocuments();
     const todaysCustomers = await Customer.countDocuments({
         createdAt: { $gte: start, $lte: end }
+    });
+
+    console.log('Dashboard Stats:', {
+        totalOrders,
+        todaysOrders,
+        totalRevenue,
+        todaysRevenue,
+        totalCustomers,
+        todaysCustomers
     });
 
     res.json({

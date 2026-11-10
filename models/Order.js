@@ -14,6 +14,8 @@ const orderSchema = new mongoose.Schema({
     finalAmount: { type: Number, required: true },
     remark: { type: String }, // Optional remark field
     additionalRemark: { type: String }, // Second optional remark field
+    isFreeIssue: { type: Boolean, default: false }, // Marked as Free Issue
+    isExchange: { type: Boolean, default: false }, // Marked as Exchange
     status: {
         type: String,
         enum: ['Pending', 'Dispatched', 'Returned'],

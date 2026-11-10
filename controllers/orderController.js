@@ -210,6 +210,10 @@ const createOrder = asyncHandler(async (req, res) => {
         paymentStatus,
         remark,
         additionalRemark,
+        isFreeIssue,
+        isExchange,
+        freeIssue,
+        exchange,
         deliveryCharge: manualDeliveryCharge // Extract deliveryCharge if provided
     } = req.body;
 
@@ -273,7 +277,9 @@ const createOrder = asyncHandler(async (req, res) => {
         agent: req.user._id,
         status: 'Pending',
         remark: finalRemark,
-        additionalRemark
+        additionalRemark,
+        isFreeIssue: isFreeIssue !== undefined ? Boolean(isFreeIssue) : Boolean(freeIssue),
+        isExchange: isExchange !== undefined ? Boolean(isExchange) : Boolean(exchange)
     });
 
     const createdOrder = await order.save();
@@ -358,6 +364,10 @@ const updateOrder = asyncHandler(async (req, res) => {
         paymentStatus,
         remark,
         additionalRemark,
+        isFreeIssue,
+        isExchange,
+        freeIssue,
+        exchange,
         deliveryCharge: manualDeliveryCharge,
         status
     } = req.body;
@@ -418,6 +428,10 @@ const updateOrder = asyncHandler(async (req, res) => {
     if (customerId) order.customer = customerId;
     if (paymentStatus) order.paymentStatus = paymentStatus;
     if (additionalRemark !== undefined) order.additionalRemark = additionalRemark;
+    if (isFreeIssue !== undefined) order.isFreeIssue = Boolean(isFreeIssue);
+    else if (freeIssue !== undefined) order.isFreeIssue = Boolean(freeIssue);
+    if (isExchange !== undefined) order.isExchange = Boolean(isExchange);
+    else if (exchange !== undefined) order.isExchange = Boolean(exchange);
     if (isAdmin && status) order.status = status;
 
     // Resolve any pending request

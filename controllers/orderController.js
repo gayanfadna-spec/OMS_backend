@@ -266,6 +266,11 @@ const createOrder = asyncHandler(async (req, res) => {
         }
     }
 
+    // Free Issue and Exchange marks are only supported for Paid orders
+    const isPaid = paymentStatus === 'Paid';
+    const finalIsFreeIssue = isPaid && (isFreeIssue !== undefined ? Boolean(isFreeIssue) : Boolean(freeIssue));
+    const finalIsExchange = isPaid && (isExchange !== undefined ? Boolean(isExchange) : Boolean(exchange));
+
     const order = new Order({
         customer: customerId,
         items,
@@ -278,8 +283,8 @@ const createOrder = asyncHandler(async (req, res) => {
         status: 'Pending',
         remark: finalRemark,
         additionalRemark,
-        isFreeIssue: isFreeIssue !== undefined ? Boolean(isFreeIssue) : Boolean(freeIssue),
-        isExchange: isExchange !== undefined ? Boolean(isExchange) : Boolean(exchange)
+        isFreeIssue: finalIsFreeIssue,
+        isExchange: finalIsExchange
     });
 
     const createdOrder = await order.save();
@@ -428,10 +433,20 @@ const updateOrder = asyncHandler(async (req, res) => {
     if (customerId) order.customer = customerId;
     if (paymentStatus) order.paymentStatus = paymentStatus;
     if (additionalRemark !== undefined) order.additionalRemark = additionalRemark;
-    if (isFreeIssue !== undefined) order.isFreeIssue = Boolean(isFreeIssue);
-    else if (freeIssue !== undefined) order.isFreeIssue = Boolean(freeIssue);
-    if (isExchange !== undefined) order.isExchange = Boolean(isExchange);
-    else if (exchange !== undefined) order.isExchange = Boolean(exchange);
+
+    // Free Issue and Exchange marks are only supported for Paid orders
+    const currentPaymentStatus = paymentStatus || order.paymentStatus;
+    if (currentPaymentStatus !== 'Paid') {
+        order.isFreeIssue = false;
+        order.isExchange = false;
+    } else {
+        if (isFreeIssue !== undefined) order.isFreeIssue = Boolean(isFreeIssue);
+        else if (freeIssue !== undefined) order.isFreeIssue = Boolean(freeIssue);
+
+        if (isExchange !== undefined) order.isExchange = Boolean(isExchange);
+        else if (exchange !== undefined) order.isExchange = Boolean(exchange);
+    }
+
     if (isAdmin && status) order.status = status;
 
     // Resolve any pending request
